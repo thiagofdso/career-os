@@ -1,0 +1,19 @@
+{
+  "name": "career-os",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "mcp-server"
+  ],
+  "scripts": {
+    "build": "npm run -ws build",
+    "test": "npm run -ws test",
+    "test:e2e": "node --test e2e/dashboard.e2e.test.mjs"
+  },
+  "devDependencies": {
+    "c8": "^11.0.0",
+    "playwright": "^1.54.0",
+    "sonarqube-scanner": "^4.3.6"
+  }
+}
