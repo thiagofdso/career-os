@@ -13,27 +13,28 @@ Resultado:
 Arquivo gerado:
 - `coverage/lcov.info`
 
-## SonarQube
+## SonarQube (nova tentativa)
 ### Download
-- Baixado: `https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-26.4.0.121862.zip`
-- Extraído em `.tools/sonarqube-26.4.0.121862`
+- URL acessada: `https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-26.4.0.121862.zip`
+- Binário baixado e extraído em `.tools/sonarqube-26.4.0.121862`.
 
 ### Execução
-Tentativas de iniciar SonarQube falharam porque o Elasticsearch não pode rodar como root neste ambiente:
-- `java.lang.RuntimeException: can not run elasticsearch as root`
+- Início como root falha (Elasticsearch não roda como root).
+- Início como usuário `sonarqube` com `SONAR_JAVA_PATH=/usr/bin/java` funcionou e processo subiu.
+- Endpoint `GET /api/system/status` permaneceu em `STARTING` durante as tentativas.
 
-Também não foi possível iniciar como usuário não-root devido à indisponibilidade de Java acessível fora de `/root`.
+### Scanner
+- Configuração preparada em `sonar-project.properties` e `scripts-run-sonar.cjs`.
+- Execução do scanner retornou erro de compatibilidade/endpoint:
+  - tentativa em `/api/v2/analysis/version` retornando 404.
+- Sem status `UP`, não foi possível concluir análise e publicar métricas.
 
-### Análise Sonar
-Foi preparada configuração:
-- `sonar-project.properties`
-- `scripts-run-sonar.cjs`
+## Playwright (nova tentativa)
+- Dependências de sistema instaladas (`libatk`, `libgbm`, etc).
+- Acesso via Playwright à URL solicitada foi tentado.
+- Resultado:
+  - primeiro erro TLS (`ERR_CERT_AUTHORITY_INVALID`),
+  - depois evento de download direto (`Download is starting`) sem página HTML para screenshot.
 
-Mas análise não executou por `ECONNREFUSED` (servidor SonarQube indisponível).
-
-## Playwright acesso URL solicitada
-Tentativa de abrir URL com Playwright falhou por dependência de sistema ausente:
-- `libatk-1.0.so.0: cannot open shared object file`
-
-## Issues
-Sem servidor SonarQube funcional, não foi possível consultar issues e métricas do Sonar via API neste ambiente.
+## Issues e métricas Sonar
+Sem análise concluída no SonarQube, não foi possível extrair relatório final de issues (`/api/issues/search`) e métricas (`/api/measures/component`).
