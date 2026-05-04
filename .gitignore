@@ -5,3 +5,5 @@ career_os.db
 coverage/
 
 frontend/dist/
+
+e2e/screenshots/*.png
