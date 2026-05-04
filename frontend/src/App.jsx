@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-const API = (globalThis.API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
+const API = (import.meta.env.VITE_API_URL || globalThis.API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
 
 async function request(path, options = {}) {
   const res = await fetch(`${API}${path}`, {
