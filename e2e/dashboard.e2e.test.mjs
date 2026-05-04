@@ -37,15 +37,30 @@ test('dashboard renders seeded backend data and captures screenshots', async () 
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     await page.goto(`http://127.0.0.1:${FRONTEND_PORT}`);
     await page.waitForTimeout(1500);
-    await page.screenshot({ path: 'e2e/screenshots/01-dashboard.png', fullPage: true });
 
-    await page.getByText('Fila de Aprovação').first().click();
-    await page.waitForTimeout(1000);
-    await page.screenshot({ path: 'e2e/screenshots/02-approvals.png', fullPage: true });
+    const screens = [
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'approvals', label: 'Fila de Aprovação' },
+      { id: 'radar', label: 'Radar de Oportunidades' },
+      { id: 'networking', label: 'Networking Estratégico' },
+      { id: 'content', label: 'Conteúdo e Autoridade' },
+      { id: 'portfolio', label: 'Portfólio e Projetos' },
+      { id: 'inbox', label: 'Entrevistas e Conversão' },
+      { id: 'orchestrator', label: 'Orquestrador Central' },
+      { id: 'interviews', label: 'Entrevistas' },
+      { id: 'metrics', label: 'Métricas de Carreira' },
+    ];
 
-    await page.getByText('Métricas de Carreira').first().click();
-    await page.waitForTimeout(1000);
-    await page.screenshot({ path: 'e2e/screenshots/03-metrics.png', fullPage: true });
+    for (let i = 0; i < screens.length; i++) {
+      const screen = screens[i];
+      if (screen.id !== 'dashboard') {
+        await page.getByRole('button', { name: screen.label }).click();
+        await page.waitForTimeout(1000);
+      }
+      const fileIndex = String(i + 1).padStart(2, '0');
+      await page.screenshot({ path: `e2e/screenshots/${fileIndex}-${screen.id}.png`, fullPage: true });
+    }
+
     await browser.close();
 
     const tasks = await (await fetch(`${API}/tasks`)).json();
