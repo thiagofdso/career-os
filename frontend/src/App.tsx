@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { COLUMNS, RADAR_COLUMNS, NETWORKING_COLUMNS, INTERVIEW_COLUMNS } from './constants';
 import { KanbanColumn } from './components/Dashboard/KanbanColumn';
@@ -23,16 +23,50 @@ import { cn } from './lib/utils';
 
 export default function App() {
   const [cards, setCards] = useState(MOCK_CARDS);
+  const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
   const [activeView, setActiveView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCard, setSelectedCard] = useState<CareerCard | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredBySearch = cards.filter(c => 
+  
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API}/tasks`);
+        const tasks = await res.json();
+        const mapped = tasks.map((t: any) => ({
+          id: String(t.id),
+          type: 'project',
+          title: t.title,
+          description: t.description || '',
+          agentId: t.agent || 'orchestrator',
+          status: t.status || 'inbox',
+          priority: t.priority || 'medium',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          needsApproval: false
+        }));
+        if (Array.isArray(mapped) && mapped.length) setCards(mapped);
+      } catch {}
+    })();
+  }, []);
+const filteredBySearch = cards.filter(c => 
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+
+
+  const apiUpdateTask = async (id: string, patch: Record<string, unknown>) => {
+    await fetch(`${API}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+  };
 
   const handleMoveCard = (id: string, targetStatus: CardStatus, updatedContent?: string) => {
     setCards(prev => {
@@ -51,6 +85,8 @@ export default function App() {
       
       return updatedCards;
     });
+    const card = cards.find(c => c.id === id);
+    if (card) apiUpdateTask(id, { status: targetStatus, description: updatedContent ?? card.description, needsApproval: targetStatus === CardStatus.WAITING_APPROVAL });
     setSelectedCard(null);
   };
 
@@ -94,6 +130,7 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
     setCards(prev => [newCard, ...prev]);
+    fetch(`${API}/tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newCard.title, description: newCard.description, status: newCard.status, agent: newCard.agentId, priority: newCard.priority, needsApproval: newCard.needsApproval }) }).catch(() => {});
     setIsCreateModalOpen(false);
   };
 

@@ -1,8 +1,9 @@
 node_modules/
-build/
-dist/
+career_os.db
+.skills/
+.tools/
 coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
+
+frontend/dist/
+
+e2e/screenshots/*.png

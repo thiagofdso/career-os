@@ -1,0 +1,8 @@
+{
+  "name": "@career-os/mcp-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js"
+  }
+}
