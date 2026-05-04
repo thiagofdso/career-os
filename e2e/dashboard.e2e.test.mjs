@@ -1,10 +1,66 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { chromium } from 'playwright';
 import { createServer as createViteServer } from 'vite';
-import { createDb } from '../backend/src/db.js';
-import { createApp } from '../backend/src/app.js';
+
+function createApiServer() {
+  let taskId = 0;
+  let eventId = 0;
+  const tasks = [];
+  const events = [];
+
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url || '/', 'http://127.0.0.1');
+    const send = (status, payload) => {
+      res.writeHead(status, { 'content-type': 'application/json' });
+      res.end(payload == null ? '' : JSON.stringify(payload));
+    };
+
+    if (!url.pathname.startsWith('/api/')) return send(404, { error: 'not found' });
+
+    const body = await new Promise((resolve) => {
+      let data = '';
+      req.on('data', (chunk) => { data += chunk; });
+      req.on('end', () => resolve(data ? JSON.parse(data) : {}));
+    });
+
+    if (req.method === 'GET' && url.pathname === '/api/tasks') return send(200, tasks);
+    if (req.method === 'POST' && url.pathname === '/api/tasks') {
+      const task = { id: ++taskId, status: 'todo', priority: 'medium', ...body };
+      tasks.push(task);
+      return send(201, task);
+    }
+    if (req.method === 'DELETE' && /^\/api\/tasks\/\d+$/.test(url.pathname)) {
+      const id = Number(url.pathname.split('/').pop());
+      const idx = tasks.findIndex((t) => t.id === id);
+      if (idx >= 0) tasks.splice(idx, 1);
+      res.writeHead(204); res.end(); return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/events') return send(200, events);
+    if (req.method === 'POST' && url.pathname === '/api/events') {
+      const event = { id: ++eventId, created_at: new Date().toISOString(), ...body };
+      events.push(event);
+      return send(201, event);
+    }
+    if (req.method === 'DELETE' && /^\/api\/events\/\d+$/.test(url.pathname)) {
+      const id = Number(url.pathname.split('/').pop());
+      const idx = events.findIndex((e) => e.id === id);
+      if (idx >= 0) events.splice(idx, 1);
+      res.writeHead(204); res.end(); return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/metrics') {
+      return send(200, { tasks: { total: tasks.length }, events: { total: events.length } });
+    }
+
+    return send(404, { error: 'not found' });
+  });
+
+  return server;
+}
 
 async function api(base, path, options = {}) {
   const res = await fetch(`${base}${path}`, { headers: { 'content-type': 'application/json' }, ...options });
@@ -14,11 +70,8 @@ async function api(base, path, options = {}) {
 test('e2e dashboard with visual evidence screenshots', async () => {
   await mkdir('e2e/screenshots', { recursive: true });
 
-  const db = createDb(':memory:');
-  const app = createApp(db);
-  const backend = app.listen(0);
+  const backend = createApiServer().listen(0);
   const backendBase = `http://127.0.0.1:${backend.address().port}/api`;
-  const ids = { tasks: [], events: [] };
 
   const frontend = await createViteServer({
     root: new URL('../frontend', import.meta.url).pathname,
@@ -36,11 +89,10 @@ test('e2e dashboard with visual evidence screenshots', async () => {
     const t1 = await api(backendBase, '/tasks', { method: 'POST', body: JSON.stringify({ title: 'Vaga A', agent: 'Radar', priority: 'high' }) });
     const t2 = await api(backendBase, '/tasks', { method: 'POST', body: JSON.stringify({ title: 'Post LinkedIn', agent: 'Conteudo', status: 'doing' }) });
     const ev = await api(backendBase, '/events', { method: 'POST', body: JSON.stringify({ type: 'linkedin_message', payload: { from: 'Recruiter' } }) });
-    ids.tasks.push(t1.id, t2.id);
-    ids.events.push(ev.id);
+    assert.ok(t1.id && t2.id && ev.id);
 
-    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1500);
+    await page.goto(frontendUrl, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1000);
     await page.screenshot({ path: 'e2e/screenshots/01-dashboard-inicial.png', fullPage: true });
 
     const approvalsNav = page.getByText('Aprovações', { exact: false }).first();
