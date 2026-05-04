@@ -47,14 +47,14 @@ test('dashboard renders seeded backend data and captures screenshots', async () 
       { id: 'portfolio', label: 'Portfólio e Projetos' },
       { id: 'inbox', label: 'Entrevistas e Conversão' },
       { id: 'orchestrator', label: 'Orquestrador Central' },
-      { id: 'interviews', label: 'Entrevistas' },
+      { id: 'interviews', label: 'Entrevistas', exact: true },
       { id: 'metrics', label: 'Métricas de Carreira' },
     ];
 
     for (let i = 0; i < screens.length; i++) {
       const screen = screens[i];
       if (screen.id !== 'dashboard') {
-        await page.getByRole('button', { name: screen.label }).click();
+        await page.getByText(screen.label, { exact: screen.exact ?? false }).first().click();
         await page.waitForTimeout(1000);
       }
       const fileIndex = String(i + 1).padStart(2, '0');
