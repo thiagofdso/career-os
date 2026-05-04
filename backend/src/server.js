@@ -6,6 +6,16 @@ const db = new Database(process.env.SQLITE_PATH || 'career_os.db');
 
 const tables = ['vaga', 'networking', 'entrevista', 'conteudo', 'projeto', 'orquestrador'];
 
+const parseTask = (t) => {
+  if (!t) return t;
+  return {
+    ...t,
+    needsApproval: t.needsApproval === 1,
+    tags: t.tags ? JSON.parse(t.tags) : undefined,
+    metadata: t.metadata ? JSON.parse(t.metadata) : undefined
+  };
+};
+
 tables.forEach(table => {
   db.exec(`
     CREATE TABLE IF NOT EXISTS task_${table} (
@@ -46,12 +56,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 tables.forEach(table => {
   app.get(`/api/v1/task-${table}`, (_req, res) => {
     const tasks = db.prepare(`SELECT * FROM task_${table} ORDER BY id DESC`).all();
-    res.json(tasks.map(t => ({
-      ...t,
-      needsApproval: t.needsApproval === 1,
-      tags: t.tags ? JSON.parse(t.tags) : undefined,
-      metadata: t.metadata ? JSON.parse(t.metadata) : undefined
-    })));
+    res.json(tasks.map(parseTask));
   });
 
   app.post(`/api/v1/task-${table}`, (req, res) => {
@@ -75,12 +80,7 @@ tables.forEach(table => {
     );
     
     const t = db.prepare(`SELECT * FROM task_${table} WHERE id = ?`).get(result.lastInsertRowid);
-    res.status(201).json({
-      ...t,
-      needsApproval: t.needsApproval === 1,
-      tags: t.tags ? JSON.parse(t.tags) : undefined,
-      metadata: t.metadata ? JSON.parse(t.metadata) : undefined
-    });
+    res.status(201).json(parseTask(t));
   });
 
   app.patch(`/api/v1/task-${table}/:id`, (req, res) => {
@@ -89,10 +89,7 @@ tables.forEach(table => {
     if (!current) return res.status(404).json({ error: 'not found' });
     
     const next = { 
-      ...current,
-      needsApproval: current.needsApproval === 1,
-      tags: current.tags ? JSON.parse(current.tags) : undefined,
-      metadata: current.metadata ? JSON.parse(current.metadata) : undefined,
+      ...parseTask(current),
       ...req.body 
     };
     
@@ -110,12 +107,7 @@ tables.forEach(table => {
     );
     
     const t = db.prepare(`SELECT * FROM task_${table} WHERE id = ?`).get(id);
-    res.json({
-      ...t,
-      needsApproval: t.needsApproval === 1,
-      tags: t.tags ? JSON.parse(t.tags) : undefined,
-      metadata: t.metadata ? JSON.parse(t.metadata) : undefined
-    });
+    res.json(parseTask(t));
   });
 
   app.delete(`/api/v1/task-${table}/:id`, (req, res) => {
