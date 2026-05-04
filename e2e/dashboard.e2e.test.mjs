@@ -42,6 +42,13 @@ test('e2e dashboard with visual evidence screenshots', async () => {
     await page.goto(frontendUrl);
     await page.waitForSelector('text=CareerOS Dashboard');
     await page.waitForSelector('text=Vaga A');
+
+    await page.waitForFunction(() => {
+      const bodyBg = getComputedStyle(document.body).backgroundImage;
+      const primaryButton = document.querySelector('button.primary');
+      const primaryBg = primaryButton ? getComputedStyle(primaryButton).backgroundColor : '';
+      return bodyBg && bodyBg !== 'none' && primaryBg && primaryBg !== 'rgba(0, 0, 0, 0)';
+    });
     await page.screenshot({ path: 'e2e/screenshots/01-dashboard-inicial.png', fullPage: true });
 
     await page.getByPlaceholder('Título').fill('Nova tarefa E2E');
