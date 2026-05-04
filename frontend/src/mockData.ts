@@ -3,7 +3,7 @@ import { CareerCard, CardStatus, CardType, AgentType, Priority } from './types';
 export const MOCK_CARDS: CareerCard[] = [
   {
     id: '1',
-    type: CardType.JOB,
+    type: CardType.VAGA,
     title: 'Senior AI Engineer - Cloud Infrastructure',
     description: 'Vaga detectada no LinkedIn. Enfoque em arquitetura de agentes e implantação em grande escala.',
     origin: 'LinkedIn',
@@ -20,7 +20,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '2',
-    type: CardType.POST,
+    type: CardType.CONTEUDO,
     title: 'Post: A Era da Orquestração de Agentes',
     description: 'Postagem estratégica sugerida para aumentar autoridade técnica em Cloud/IA.',
     agentId: AgentType.CONTENT,
@@ -32,7 +32,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '3',
-    type: CardType.MESSAGE,
+    type: CardType.NETWORKING,
     title: 'Resposta: Recrutadora da OpenAI',
     description: 'Resposta sugerida para mensagem direta sobre oportunidade de consultoria.',
     agentId: AgentType.INTERVIEW,
@@ -44,7 +44,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '4',
-    type: CardType.PROJECT,
+    type: CardType.PROJETO,
     title: 'Orquestrador MCP - Portfolio MVP',
     description: 'Projeto de portfólio para demonstrar integração entre agentes e ferramentas externas.',
     origin: 'GitHub Ideas',
@@ -57,7 +57,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '5',
-    type: CardType.INTERVIEW,
+    type: CardType.ENTREVISTA,
     title: 'Preparo: Entrevista Técnica na Vercel',
     description: 'Simulação gerada pelo agente de entrevistas focada em React & Edge Computing.',
     agentId: AgentType.INTERVIEW,
@@ -69,7 +69,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '6',
-    type: CardType.JOB,
+    type: CardType.VAGA,
     title: 'Staff Platform Engineer',
     description: 'Aplicação sugerida com base no score de relevância e histórico de consultoria.',
     origin: 'Vercel Careers',
@@ -83,7 +83,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '7',
-    type: CardType.INTERVIEW,
+    type: CardType.ENTREVISTA,
     title: 'Recrutamento Google - 1a Fase',
     description: 'Entrevista de triagem com recrutador sobre experiência em Distribuited Systems.',
     agentId: AgentType.INTERVIEW,
@@ -96,7 +96,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '8',
-    type: CardType.INTERVIEW,
+    type: CardType.ENTREVISTA,
     title: 'Simulação: System Design (Agente)',
     description: 'Sessão de treinamento com o Agente de Entrevistas focada em escalabilidade vertical.',
     agentId: AgentType.INTERVIEW,
@@ -109,7 +109,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '9',
-    type: CardType.INTERVIEW,
+    type: CardType.ENTREVISTA,
     title: 'Entrevista Final - Startup Unicórnio',
     description: 'Conversa final com CTO sobre cultura e roadmap de produto.',
     agentId: AgentType.INTERVIEW,
@@ -122,7 +122,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '10',
-    type: CardType.MESSAGE,
+    type: CardType.NETWORKING,
     title: 'Conexão: Senior Manager na Meta',
     description: 'Solicitação de conexão personalizada baseada em interesses comuns em infraestrutura.',
     agentId: AgentType.NETWORKING,
@@ -134,7 +134,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '11',
-    type: CardType.MESSAGE,
+    type: CardType.NETWORKING,
     title: 'Follow-up: Networking Dinner NYC',
     description: 'Agradecimento e proposta de call para contato conhecido no evento de networking.',
     agentId: AgentType.NETWORKING,
@@ -146,7 +146,7 @@ export const MOCK_CARDS: CareerCard[] = [
   },
   {
     id: '12',
-    type: CardType.MESSAGE,
+    type: CardType.NETWORKING,
     title: 'Intro: CTO Startup Alvo',
     description: 'Pedido de introdução via contato em comum para sondagem de cultura.',
     agentId: AgentType.NETWORKING,

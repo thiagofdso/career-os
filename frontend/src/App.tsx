@@ -8,7 +8,6 @@ import { Sidebar } from './components/Sidebar';
 import { COLUMNS, RADAR_COLUMNS, NETWORKING_COLUMNS, INTERVIEW_COLUMNS } from './constants';
 import { KanbanColumn } from './components/Dashboard/KanbanColumn';
 import { KanbanCard } from './components/Dashboard/KanbanCard';
-import { MOCK_CARDS } from './mockData';
 import { MetricsView } from './components/Dashboard/MetricsView';
 import { CreateCardForm } from './components/Dashboard/CreateCardForm';
 import { InterviewsView } from './components/Dashboard/InterviewsView';
@@ -16,133 +15,136 @@ import { JourneyView } from './components/Dashboard/JourneyView';
 import { ActionCenter } from './components/Dashboard/ActionCenter';
 import { Modal } from './components/ui/Modal';
 import { CardDetail } from './components/Dashboard/CardDetail';
-import { CareerCard, AgentType, CardStatus } from './types';
+import { CareerCard, AgentType, CardStatus, CardType } from './types';
 import { Search, Filter, Bell, Sparkles, Plus, Menu, X } from 'lucide-react';
 import { Button } from './components/ui/Button';
 import { cn } from './lib/utils';
 
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
+
 export default function App() {
-  const [cards, setCards] = useState(MOCK_CARDS);
-  const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
+  const [cards, setCards] = useState<CareerCard[]>([]);
   const [activeView, setActiveView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCard, setSelectedCard] = useState<CareerCard | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    const fetchAllCards = async () => {
+      setIsLoading(true);
       try {
-        const res = await fetch(`${API}/tasks`);
-        const tasks = await res.json();
-        const mapped = tasks.map((t: any) => ({
-          id: String(t.id),
-          type: 'project',
-          title: t.title,
-          description: t.description || '',
-          agentId: t.agent || 'orchestrator',
-          status: t.status || 'inbox',
-          priority: t.priority || 'medium',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          needsApproval: false
-        }));
-        if (Array.isArray(mapped) && mapped.length) setCards(mapped);
-      } catch {}
-    })();
+        const types = [
+          CardType.VAGA, CardType.NETWORKING, CardType.ENTREVISTA,
+          CardType.CONTEUDO, CardType.PROJETO, CardType.ORQUESTRADOR
+        ];
+        
+        const fetchPromises = types.map(type => 
+          fetch(`${API}/v1/task-${type.toLowerCase()}`)
+            .then(res => res.ok ? res.json() : [])
+            .catch(() => [])
+        );
+
+        const results = await Promise.all(fetchPromises);
+        const allCards = results.flat();
+        setCards(allCards);
+      } catch (error) {
+        console.error('Failed to fetch cards:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAllCards();
   }, []);
-const filteredBySearch = cards.filter(c => 
-    c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
+  const handleApprove = (id: string) => {
+    const card = cards.find(c => c.id === id);
+    if (!card) return;
+    
+    let nextStatus = CardStatus.APPROVED;
+    if (card.agentId === AgentType.CONTENT) nextStatus = CardStatus.SCHEDULED;
+    else if (card.agentId === AgentType.NETWORKING) nextStatus = CardStatus.SENT;
+    else if (card.agentId === AgentType.INTERVIEW) nextStatus = CardStatus.REPLY_MESSAGE;
 
-
-  const apiUpdateTask = async (id: string, patch: Record<string, unknown>) => {
-    await fetch(`${API}/tasks/${id}`, {
+    fetch(`${API}/v1/task-${card.type.toLowerCase()}/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
+      body: JSON.stringify({ status: nextStatus, needsApproval: false })
+    }).then(res => res.json()).then(updatedCard => {
+      setCards(cards.map(c => c.id === id ? updatedCard : c));
+    }).catch(() => {
+      // Fallback optimistic update
+      setCards(cards.map(c => c.id === id ? { ...c, status: nextStatus, needsApproval: false } : c));
     });
-  };
-
-  const handleMoveCard = (id: string, targetStatus: CardStatus, updatedContent?: string) => {
-    setCards(prev => {
-      const updatedCards = prev.map(c => 
-        c.id === id ? { 
-          ...c, 
-          status: targetStatus, 
-          needsApproval: targetStatus === CardStatus.WAITING_APPROVAL,
-          description: updatedContent !== undefined ? updatedContent : c.description,
-          updatedAt: new Date().toISOString()
-        } : c
-      );
-
-      // Special logic: if a card moves to MONITORING, maybe create a notification or interview card
-      // For now, we just implement the transitions requested.
-      
-      return updatedCards;
-    });
-    const card = cards.find(c => c.id === id);
-    if (card) apiUpdateTask(id, { status: targetStatus, description: updatedContent ?? card.description, needsApproval: targetStatus === CardStatus.WAITING_APPROVAL });
+    
     setSelectedCard(null);
   };
 
-  const handleApprove = (id: string, updatedContent?: string) => {
+  const handleReject = (id: string) => {
+    const feedback = "Rejected";
     const card = cards.find(c => c.id === id);
     if (!card) return;
 
-    let nextStatus = card.status;
+    fetch(`${API}/v1/task-${card.type.toLowerCase()}/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: CardStatus.REJECTED, needsApproval: false, metadata: { ...card.metadata, rejectReason: feedback } })
+    }).then(res => res.json()).then(updatedCard => {
+      setCards(cards.map(c => c.id === id ? updatedCard : c));
+    }).catch(() => {
+       // Fallback optimistic update
+       setCards(cards.map(c => c.id === id ? { ...c, status: CardStatus.REJECTED, needsApproval: false } : c));
+    });
 
-    // Logic for Radar Workflow
-    if (card.agentId === AgentType.RADAR) {
-      if (card.status === CardStatus.WAITING_APPROVAL) nextStatus = CardStatus.RESUME_REVISION;
-    } 
-    // Logic for Interview Workflow
-    else if (card.agentId === AgentType.INTERVIEW) {
-      if (card.status === CardStatus.WAITING_APPROVAL) nextStatus = CardStatus.REPLY_MESSAGE;
-    }
-    // Logic for Networking Workflow
-    else if (card.agentId === AgentType.NETWORKING) {
-      if (card.status === CardStatus.WAITING_APPROVAL) nextStatus = CardStatus.SENT;
-    }
-    // Generic fallback
-    else if (card.needsApproval) {
-      nextStatus = CardStatus.TRIAGEM; // or some neutral state
-    }
-
-    handleMoveCard(id, nextStatus, updatedContent);
+    setSelectedCard(null);
   };
 
-  const handleReject = (id: string) => {
+  const handleMoveCard = (id: string, newStatus: CardStatus, note?: string) => {
     const card = cards.find(c => c.id === id);
-    const targetStatus = card?.agentId === AgentType.NETWORKING ? CardStatus.ARCHIVED : CardStatus.REJECTED;
-    handleMoveCard(id, targetStatus);
+    if (!card) return;
+
+    const payload: any = { status: newStatus };
+    if (note) payload.metadata = { ...card.metadata, statusNote: note };
+
+    fetch(`${API}/v1/task-${card.type.toLowerCase()}/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(res => res.json()).then(updatedCard => {
+      setCards(cards.map(c => c.id === id ? updatedCard : c));
+    }).catch(() => {
+      // Fallback optimistic update
+      setCards(cards.map(c => c.id === id ? { ...c, status: newStatus } : c));
+    });
+
+    setSelectedCard(null);
   };
 
-  const handleCreateCard = (data: Omit<CareerCard, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newCard: CareerCard = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setCards(prev => [newCard, ...prev]);
-    fetch(`${API}/tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newCard.title, description: newCard.description, status: newCard.status, agent: newCard.agentId, priority: newCard.priority, needsApproval: newCard.needsApproval }) }).catch(() => {});
+  const handleCreateCard = (newCard: Partial<CareerCard>) => {
+    const type = newCard.type || CardType.ORQUESTRADOR;
+    
+    fetch(`${API}/v1/task-${type.toLowerCase()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCard)
+    }).then(res => res.json()).then(createdCard => {
+      setCards([...cards, createdCard]);
+    }).catch(() => {
+      // Fallback optimistic update
+      const tempCard = { ...newCard, id: Date.now().toString() } as CareerCard;
+      setCards([...cards, tempCard]);
+    });
+
     setIsCreateModalOpen(false);
   };
 
   const renderContent = () => {
-    if (activeView === 'dashboard') {
-      return (
-        <ActionCenter 
-          cards={cards} 
-          onCardClick={(card) => setSelectedCard(card)} 
-        />
-      );
-    }
+    const filteredBySearch = cards.filter(card => 
+      card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      card.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const agentViewMap: Record<string, AgentType> = {
       'radar': AgentType.RADAR,
@@ -283,7 +285,6 @@ const filteredBySearch = cards.filter(c =>
 
   return (
     <div className="flex h-screen w-full bg-ds-background-100 overflow-hidden font-sans">
-      {/* Lado Esquerdo: Sidebar de Navegação */}
       <div className={cn(
         "transition-all duration-300 ease-in-out flex-shrink-0",
         isSidebarOpen ? "w-64" : "w-0 -translate-x-full overflow-hidden"
@@ -291,10 +292,8 @@ const filteredBySearch = cards.filter(c =>
         <Sidebar activeView={activeView} onViewChange={setActiveView} />
       </div>
 
-      {/* Lado Direito: Dashboard Principal */}
       <main className="flex flex-1 flex-col overflow-hidden">
         
-        {/* Header Superior */}
         <header className="flex h-16 items-center justify-between border-b border-ds-gray-200 bg-ds-background-100 px-8 ds-shadow-border relative z-10">
           <div className="flex items-center gap-4 flex-1">
             <button 
@@ -336,10 +335,8 @@ const filteredBySearch = cards.filter(c =>
           </div>
         </header>
 
-        {/* Dashboard Content */}
         <div className="flex-1 overflow-hidden p-6 flex flex-col gap-6 bg-ds-background-100">
           
-          {/* Cabeçalho do Dashboard */}
           <div className="flex items-end justify-between px-2">
             <div className="flex flex-col gap-1">
               <h1 className="text-2xl font-bold tracking-tight text-ds-gray-1000">
@@ -361,12 +358,16 @@ const filteredBySearch = cards.filter(c =>
             </div>
           </div>
 
-          {/* Dynamic Content */}
-          {renderContent()}
+          {isLoading ? (
+             <div className="flex-1 flex items-center justify-center">
+               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+             </div>
+          ) : (
+            renderContent()
+          )}
         </div>
       </main>
 
-      {/* Global Modals */}
       <Modal 
         isOpen={!!selectedCard} 
         onClose={() => setSelectedCard(null)} 

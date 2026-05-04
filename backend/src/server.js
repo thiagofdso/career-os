@@ -3,18 +3,32 @@ import cors from 'cors';
 import Database from 'better-sqlite3';
 
 const db = new Database(process.env.SQLITE_PATH || 'career_os.db');
+
+const tables = ['vaga', 'networking', 'entrevista', 'conteudo', 'projeto', 'orquestrador'];
+
+tables.forEach(table => {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS task_${table} (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      origin TEXT,
+      agentId TEXT NOT NULL,
+      status TEXT NOT NULL,
+      priority TEXT NOT NULL,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+      deadline TEXT,
+      tags TEXT,
+      score INTEGER,
+      metadata TEXT,
+      needsApproval INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+});
+
 db.exec(`
-CREATE TABLE IF NOT EXISTS tasks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  description TEXT DEFAULT '',
-  status TEXT NOT NULL DEFAULT 'triagem',
-  agent TEXT NOT NULL DEFAULT 'orchestrator',
-  priority TEXT NOT NULL DEFAULT 'medium',
-  needs_approval INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT NOT NULL,
@@ -28,22 +42,88 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
-app.get('/api/tasks', (_req, res) => res.json(db.prepare('SELECT * FROM tasks ORDER BY id DESC').all()));
-app.post('/api/tasks', (req, res) => {
-  const { title, description = '', status = 'triagem', agent = 'orchestrator', priority = 'medium', needsApproval = false } = req.body || {};
-  if (!title) return res.status(400).json({ error: 'title is required' });
-  const result = db.prepare('INSERT INTO tasks (title, description, status, agent, priority, needs_approval, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime(\'now\'))').run(title, description, status, agent, priority, needsApproval ? 1 : 0);
-  res.status(201).json(db.prepare('SELECT * FROM tasks WHERE id = ?').get(result.lastInsertRowid));
+
+tables.forEach(table => {
+  app.get(`/api/v1/task-${table}`, (_req, res) => {
+    const tasks = db.prepare(`SELECT * FROM task_${table} ORDER BY id DESC`).all();
+    res.json(tasks.map(t => ({
+      ...t,
+      needsApproval: t.needsApproval === 1,
+      tags: t.tags ? JSON.parse(t.tags) : undefined,
+      metadata: t.metadata ? JSON.parse(t.metadata) : undefined
+    })));
+  });
+
+  app.post(`/api/v1/task-${table}`, (req, res) => {
+    const {
+      type, title, description = '', origin, agentId, status, priority,
+      deadline, tags, score, metadata, needsApproval = false
+    } = req.body || {};
+    
+    if (!title) return res.status(400).json({ error: 'title is required' });
+    
+    const result = db.prepare(`
+      INSERT INTO task_${table} 
+      (type, title, description, origin, agentId, status, priority, deadline, tags, score, metadata, needsApproval, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).run(
+      type, title, description, origin, agentId, status, priority, deadline,
+      tags ? JSON.stringify(tags) : null,
+      score,
+      metadata ? JSON.stringify(metadata) : null,
+      needsApproval ? 1 : 0
+    );
+    
+    const t = db.prepare(`SELECT * FROM task_${table} WHERE id = ?`).get(result.lastInsertRowid);
+    res.status(201).json({
+      ...t,
+      needsApproval: t.needsApproval === 1,
+      tags: t.tags ? JSON.parse(t.tags) : undefined,
+      metadata: t.metadata ? JSON.parse(t.metadata) : undefined
+    });
+  });
+
+  app.patch(`/api/v1/task-${table}/:id`, (req, res) => {
+    const id = Number(req.params.id);
+    const current = db.prepare(`SELECT * FROM task_${table} WHERE id = ?`).get(id);
+    if (!current) return res.status(404).json({ error: 'not found' });
+    
+    const next = { 
+      ...current,
+      needsApproval: current.needsApproval === 1,
+      tags: current.tags ? JSON.parse(current.tags) : undefined,
+      metadata: current.metadata ? JSON.parse(current.metadata) : undefined,
+      ...req.body 
+    };
+    
+    db.prepare(`
+      UPDATE task_${table} 
+      SET type=?, title=?, description=?, origin=?, agentId=?, status=?, priority=?, deadline=?, tags=?, score=?, metadata=?, needsApproval=?, updatedAt=datetime('now') 
+      WHERE id=?
+    `).run(
+      next.type, next.title, next.description, next.origin, next.agentId, next.status, next.priority, next.deadline,
+      next.tags ? JSON.stringify(next.tags) : null,
+      next.score,
+      next.metadata ? JSON.stringify(next.metadata) : null,
+      next.needsApproval ? 1 : 0,
+      id
+    );
+    
+    const t = db.prepare(`SELECT * FROM task_${table} WHERE id = ?`).get(id);
+    res.json({
+      ...t,
+      needsApproval: t.needsApproval === 1,
+      tags: t.tags ? JSON.parse(t.tags) : undefined,
+      metadata: t.metadata ? JSON.parse(t.metadata) : undefined
+    });
+  });
+
+  app.delete(`/api/v1/task-${table}/:id`, (req, res) => {
+    db.prepare(`DELETE FROM task_${table} WHERE id=?`).run(Number(req.params.id));
+    res.status(204).end();
+  });
 });
-app.patch('/api/tasks/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const current = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-  if (!current) return res.status(404).json({ error: 'not found' });
-  const next = { ...current, ...req.body };
-  db.prepare('UPDATE tasks SET title=?, description=?, status=?, agent=?, priority=?, needs_approval=?, updated_at=datetime(\'now\') WHERE id=?').run(next.title, next.description, next.status, next.agent, next.priority, next.needsApproval ?? next.needs_approval ?? 0, id);
-  res.json(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id));
-});
-app.delete('/api/tasks/:id', (req, res) => { db.prepare('DELETE FROM tasks WHERE id=?').run(Number(req.params.id)); res.status(204).end(); });
+
 app.post('/api/events', (req, res) => {
   const { type = 'generic', payload = {} } = req.body || {};
   const result = db.prepare('INSERT INTO events (type, payload) VALUES (?, ?)').run(type, JSON.stringify(payload));
@@ -51,11 +131,19 @@ app.post('/api/events', (req, res) => {
 });
 app.get('/api/events', (_req, res) => res.json(db.prepare('SELECT * FROM events ORDER BY id DESC').all()));
 app.delete('/api/events/:id', (req, res) => { db.prepare('DELETE FROM events WHERE id=?').run(Number(req.params.id)); res.status(204).end(); });
+
 app.get('/api/metrics', (_req, res) => {
-  const total = db.prepare('SELECT COUNT(*) c FROM tasks').get().c;
-  const approvals = db.prepare('SELECT COUNT(*) c FROM tasks WHERE needs_approval = 1').get().c;
-  const done = db.prepare("SELECT COUNT(*) c FROM tasks WHERE status IN ('sent','done','archived')").get().c;
-  res.json({ totalTasks: total, pendingApprovals: approvals, completed: done });
+  let totalTasks = 0;
+  let pendingApprovals = 0;
+  let completed = 0;
+
+  tables.forEach(table => {
+    totalTasks += db.prepare(`SELECT COUNT(*) c FROM task_${table}`).get().c;
+    pendingApprovals += db.prepare(`SELECT COUNT(*) c FROM task_${table} WHERE needsApproval = 1`).get().c;
+    completed += db.prepare(`SELECT COUNT(*) c FROM task_${table} WHERE status IN ('SENT','APPROVED','ARCHIVED')`).get().c;
+  });
+
+  res.json({ totalTasks, pendingApprovals, completed });
 });
 
 const port = Number(process.env.PORT || 3001);
