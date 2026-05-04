@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const API = (import.meta.env.VITE_API_URL || globalThis.API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
 
@@ -17,8 +17,6 @@ export function App() {
   const [metrics, setMetrics] = useState({ byStatus: {} });
   const [form, setForm] = useState({ title: '', description: '', priority: 'medium', agent: '' });
 
-  const columns = useMemo(() => ['todo', 'doing', 'done'], []);
-
   async function load() {
     const [nextTasks, nextEvents, nextMetrics] = await Promise.all([
       request('/tasks'),
@@ -30,16 +28,11 @@ export function App() {
     setMetrics(nextMetrics);
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   async function onCreateTask(e) {
     e.preventDefault();
-    await request('/tasks', {
-      method: 'POST',
-      body: JSON.stringify({ ...form, status: 'todo' })
-    });
+    await request('/tasks', { method: 'POST', body: JSON.stringify({ ...form, status: 'todo' }) });
     setForm({ title: '', description: '', priority: 'medium', agent: '' });
     await load();
   }
@@ -54,32 +47,33 @@ export function App() {
     await load();
   }
 
-  return (
-    <main className="dashboard">
-      <h1>CareerOS Dashboard</h1>
+  const cols = ['todo', 'doing', 'done'];
 
-      <form className="form" onSubmit={onCreateTask}>
+  return (
+    <main>
+      <h1>CareerOS Dashboard</h1>
+      <form onSubmit={onCreateTask}>
         <input required placeholder="Título" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         <input placeholder="Descrição" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
         <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
           <option value="low">low</option><option value="medium">medium</option><option value="high">high</option>
         </select>
         <input required placeholder="Agente" value={form.agent} onChange={(e) => setForm({ ...form, agent: e.target.value })} />
-        <button className="primary" type="submit">Nova tarefa</button>
+        <button type="submit">Nova tarefa</button>
       </form>
 
-      <div className="board">
-        {columns.map((column) => (
-          <section className="column" key={column}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+        {cols.map((column) => (
+          <section key={column}>
             <h2>{column} ({metrics.byStatus?.[column] || 0})</h2>
             <ul>
               {tasks.filter((t) => t.status === column).map((task) => (
-                <li className="card" key={task.id}>
-                  <strong>{task.title}</strong> <small className="meta">{task.agent} | {task.priority}</small>
+                <li key={task.id}>
+                  <strong>{task.title}</strong> <small>{task.agent} | {task.priority}</small>
                   <div>{task.description || ''}</div>
-                  <div className="actions"><button onClick={() => moveTask(task.id, 'doing')}>▶ doing</button>
-                  <button className="success" onClick={() => moveTask(task.id, 'done')}>✔ done</button>
-                  <button className="danger" onClick={() => removeTask(task.id)}>🗑</button></div>
+                  <button onClick={() => moveTask(task.id, 'doing')}>▶ doing</button>
+                  <button onClick={() => moveTask(task.id, 'done')}>✔ done</button>
+                  <button onClick={() => removeTask(task.id)}>🗑</button>
                 </li>
               ))}
             </ul>
@@ -87,7 +81,8 @@ export function App() {
         ))}
       </div>
 
-      <section className="events"><h2>Eventos ({events.length})</h2><ul>{events.map((event) => <li key={event.id}>{event.type}</li>)}</ul></section>
+      <h2>Eventos ({events.length})</h2>
+      <ul>{events.map((event) => <li key={event.id}>{event.type}</li>)}</ul>
     </main>
   );
 }
