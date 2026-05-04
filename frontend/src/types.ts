@@ -8,12 +8,12 @@ export enum AgentType {
 }
 
 export enum CardType {
-  JOB = 'JOB',
-  MESSAGE = 'MESSAGE',
-  POST = 'POST',
-  INTERVIEW = 'INTERVIEW',
-  PROJECT = 'PROJECT',
-  TASK = 'TASK'
+  VAGA = 'VAGA',
+  NETWORKING = 'NETWORKING',
+  ENTREVISTA = 'ENTREVISTA',
+  CONTEUDO = 'CONTEUDO',
+  PROJETO = 'PROJETO',
+  ORQUESTRADOR = 'ORQUESTRADOR'
 }
 
 export enum CardStatus {

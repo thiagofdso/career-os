@@ -4,6 +4,22 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+// Temporary mock data inside the script since importing from ts files in mjs is tricky without loaders
+const MOCK_CARDS = [
+  { id: '1', type: 'VAGA', title: 'Senior AI Engineer - Cloud Infrastructure', description: 'Vaga detectada no LinkedIn. Enfoque em arquitetura de agentes e implantação em grande escala.', origin: 'LinkedIn', agentId: 'RADAR', status: 'INBOX', priority: 'HIGH', score: 92, needsApproval: false, metadata: { externalLink: 'https://linkedin.com/jobs/123' } },
+  { id: '2', type: 'CONTEUDO', title: 'Post: A Era da Orquestração de Agentes', description: 'Postagem estratégica sugerida para aumentar autoridade técnica em Cloud/IA.', agentId: 'CONTENT', status: 'AGUARDANDO_APROVACAO', priority: 'MEDIUM', needsApproval: true },
+  { id: '3', type: 'NETWORKING', title: 'Resposta: Recrutadora da OpenAI', description: 'Resposta sugerida para mensagem direta sobre oportunidade de consultoria.', agentId: 'INTERVIEW', status: 'AGUARDANDO_APROVACAO', priority: 'CRITICAL', needsApproval: true },
+  { id: '4', type: 'PROJETO', title: 'Orquestrador MCP - Portfolio MVP', description: 'Projeto de portfólio para demonstrar integração entre agentes e ferramentas externas.', origin: 'GitHub Ideas', agentId: 'PORTFOLIO', status: 'REVISAR_CURRICULO', priority: 'HIGH', needsApproval: false },
+  { id: '5', type: 'ENTREVISTA', title: 'Preparo: Entrevista Técnica na Vercel', description: 'Simulação gerada pelo agente de entrevistas focada em React & Edge Computing.', agentId: 'INTERVIEW', status: 'TRIAGEM', priority: 'HIGH', needsApproval: false },
+  { id: '6', type: 'VAGA', title: 'Staff Platform Engineer', description: 'Aplicação sugerida com base no score de relevância e histórico de consultoria.', origin: 'Vercel Careers', agentId: 'RADAR', status: 'INSCRICAO', priority: 'MEDIUM', score: 88, needsApproval: false },
+  { id: '7', type: 'ENTREVISTA', title: 'Recrutamento Google - 1a Fase', description: 'Entrevista de triagem com recrutador sobre experiência em Distribuited Systems.', agentId: 'INTERVIEW', status: 'AGENDADO', priority: 'CRITICAL', deadline: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 2).toISOString(), needsApproval: false },
+  { id: '8', type: 'ENTREVISTA', title: 'Simulação: System Design (Agente)', description: 'Sessão de treinamento com o Agente de Entrevistas focada em escalabilidade vertical.', agentId: 'INTERVIEW', status: 'TRIAGEM', priority: 'MEDIUM', deadline: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 5).toISOString(), needsApproval: false },
+  { id: '9', type: 'ENTREVISTA', title: 'Entrevista Final - Startup Unicórnio', description: 'Conversa final com CTO sobre cultura e roadmap de produto.', agentId: 'INTERVIEW', status: 'AGENDADO', priority: 'HIGH', deadline: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 1).toISOString(), needsApproval: false },
+  { id: '10', type: 'NETWORKING', title: 'Conexão: Senior Manager na Meta', description: 'Solicitação de conexão personalizada baseada em interesses comuns em infraestrutura.', agentId: 'NETWORKING', status: 'INBOX', priority: 'MEDIUM', needsApproval: false },
+  { id: '11', type: 'NETWORKING', title: 'Follow-up: Networking Dinner NYC', description: 'Agradecimento e proposta de call para contato conhecido no evento de networking.', agentId: 'NETWORKING', status: 'AGUARDANDO_APROVACAO', priority: 'HIGH', needsApproval: true },
+  { id: '12', type: 'NETWORKING', title: 'Intro: CTO Startup Alvo', description: 'Pedido de introdução via contato em comum para sondagem de cultura.', agentId: 'NETWORKING', status: 'ENVIADO', priority: 'HIGH', needsApproval: false }
+];
+
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const BACKEND_PORT = 3101;
 const FRONTEND_PORT = 3100;
@@ -29,8 +45,15 @@ test('dashboard renders seeded backend data and captures screenshots', async () 
   await wait(2500);
 
   try {
-    await fetch(`${API}/tasks`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'E2E Task A', description: 'task seeded', status: 'triagem', agent: 'radar' }) });
-    await fetch(`${API}/tasks`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'E2E Task B', description: 'task seeded 2', status: 'waiting_approval', agent: 'orchestrator', needsApproval: true }) });
+    // Seed mock data
+    for (const card of MOCK_CARDS) {
+       await fetch(`${API}/v1/task-${card.type.toLowerCase()}`, { 
+           method: 'POST', 
+           headers: { 'content-type': 'application/json' }, 
+           body: JSON.stringify(card) 
+       });
+    }
+    
     await fetch(`${API}/events`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'seed', payload: { source: 'e2e' } }) });
 
     const browser = await chromium.launch({ headless: true });
@@ -64,11 +87,14 @@ test('dashboard renders seeded backend data and captures screenshots', async () 
 
     await browser.close();
 
-    const tasks = await (await fetch(`${API}/tasks`)).json();
-    assert.ok(tasks.some((t) => t.title === 'E2E Task A'));
+    const tasksVaga = await (await fetch(`${API}/v1/task-vaga`)).json();
+    assert.ok(tasksVaga.some((t) => t.title.includes('Senior AI Engineer')));
   } finally {
-    const tasks = await (await fetch(`${API}/tasks`)).json().catch(() => []);
-    for (const t of tasks) await fetch(`${API}/tasks/${t.id}`, { method: 'DELETE' });
+    for (const type of ['vaga', 'networking', 'entrevista', 'conteudo', 'projeto', 'orquestrador']) {
+        const tasks = await (await fetch(`${API}/v1/task-${type}`)).json().catch(() => []);
+        for (const t of tasks) await fetch(`${API}/v1/task-${type}/${t.id}`, { method: 'DELETE' });
+    }
+    
     const events = await (await fetch(`${API}/events`)).json().catch(() => []);
     for (const e of events) await fetch(`${API}/events/${e.id}`, { method: 'DELETE' });
 

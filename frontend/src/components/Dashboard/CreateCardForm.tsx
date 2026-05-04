@@ -14,7 +14,7 @@ export const CreateCardForm: React.FC<CreateCardFormProps> = ({ onSubmit }) => {
     title: '',
     description: '',
     agentId: AgentType.RADAR,
-    type: CardType.TASK,
+    type: CardType.ORQUESTRADOR,
     priority: Priority.MEDIUM,
     deadline: '',
     tags: '',
