@@ -1,0 +1,6 @@
+{
+  "name": "CareerOS",
+  "description": "Sistema operacional de orquestração de carreira com agentes de IA e painel Kanban.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

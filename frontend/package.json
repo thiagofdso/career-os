@@ -1,8 +1,0 @@
-{
-  "name": "@career-os/frontend",
-  "type": "module",
-  "scripts": {
-    "build": "echo frontend build ok",
-    "test": "node --test"
-  }
-}
