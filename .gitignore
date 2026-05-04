@@ -1,0 +1,9 @@
+node_modules/
+career_os.db
+.skills/
+.tools/
+coverage/
+
+frontend/dist/
+
+e2e/screenshots/*.png
