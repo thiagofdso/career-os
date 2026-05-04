@@ -4,13 +4,16 @@ SHELL := /bin/bash
 
 install:
 	npm install
-	npm run build
+	npm --prefix frontend install
+	npm --prefix backend install
+	npm --prefix mcp-server install
+	$(MAKE) build
 
 build:
-	npm run build
+	npm --prefix frontend run build
 
 test:
-	npm test
+	npm run test:e2e
 
 run:
 	@trap 'kill 0' INT TERM EXIT; \

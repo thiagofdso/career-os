@@ -58,6 +58,16 @@ const filteredBySearch = cards.filter(c =>
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+
+
+  const apiUpdateTask = async (id: string, patch: Record<string, unknown>) => {
+    await fetch(`${API}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+  };
+
   const handleMoveCard = (id: string, targetStatus: CardStatus, updatedContent?: string) => {
     setCards(prev => {
       const updatedCards = prev.map(c => 
@@ -75,6 +85,8 @@ const filteredBySearch = cards.filter(c =>
       
       return updatedCards;
     });
+    const card = cards.find(c => c.id === id);
+    if (card) apiUpdateTask(id, { status: targetStatus, description: updatedContent ?? card.description, needsApproval: targetStatus === CardStatus.WAITING_APPROVAL });
     setSelectedCard(null);
   };
 
@@ -118,6 +130,7 @@ const filteredBySearch = cards.filter(c =>
       updatedAt: new Date().toISOString(),
     };
     setCards(prev => [newCard, ...prev]);
+    fetch(`${API}/tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newCard.title, description: newCard.description, status: newCard.status, agent: newCard.agentId, priority: newCard.priority, needsApproval: newCard.needsApproval }) }).catch(() => {});
     setIsCreateModalOpen(false);
   };
 
