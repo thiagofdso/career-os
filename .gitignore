@@ -3,3 +3,5 @@ career_os.db
 .skills/
 .tools/
 coverage/
+
+frontend/dist/

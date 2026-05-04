@@ -23,7 +23,7 @@ run-backend:
 	cd backend && npm run dev
 
 run-frontend:
-	cd frontend && python3 -m http.server 3000 --directory src
+	cd frontend && npm run dev -- --host --port 3000
 
 run-mcp:
 	cd mcp-server && npm run dev
