@@ -1,0 +1,41 @@
+{
+  "tasks": [
+    {
+      "id": 2,
+      "title": "Post LinkedIn",
+      "description": "",
+      "status": "doing",
+      "priority": "medium",
+      "agent": "Conteudo",
+      "source_event_id": null,
+      "created_at": "2026-05-03 20:08:51",
+      "updated_at": "2026-05-03 20:08:51"
+    },
+    {
+      "id": 1,
+      "title": "Vaga A",
+      "description": "",
+      "status": "todo",
+      "priority": "high",
+      "agent": "Radar",
+      "source_event_id": null,
+      "created_at": "2026-05-03 20:08:51",
+      "updated_at": "2026-05-03 20:08:51"
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "type": "linkedin_message",
+      "payload": "{\"from\":\"Recruiter\"}",
+      "created_at": "2026-05-03 20:08:51"
+    }
+  ],
+  "metrics": {
+    "totalTasks": 2,
+    "byStatus": {
+      "doing": 1,
+      "todo": 1
+    }
+  }
+}
