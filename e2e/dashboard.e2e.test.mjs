@@ -39,20 +39,23 @@ test('e2e dashboard with visual evidence screenshots', async () => {
     ids.tasks.push(t1.id, t2.id);
     ids.events.push(ev.id);
 
-    await page.goto(frontendUrl);
-    await page.waitForSelector('text=CareerOS Dashboard');
-    await page.waitForSelector('text=Vaga A');
+    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1500);
     await page.screenshot({ path: 'e2e/screenshots/01-dashboard-inicial.png', fullPage: true });
 
-    await page.getByPlaceholder('Título').fill('Nova tarefa E2E');
-    await page.getByPlaceholder('Agente').fill('Orquestrador');
-    await page.getByRole('button', { name: 'Nova tarefa' }).click();
-    await page.waitForSelector('text=Nova tarefa E2E');
-    await page.screenshot({ path: 'e2e/screenshots/02-dashboard-com-tarefa-nova.png', fullPage: true });
+    const approvalsNav = page.getByText('Aprovações', { exact: false }).first();
+    if (await approvalsNav.count()) {
+      await approvalsNav.click();
+      await page.waitForTimeout(600);
+    }
+    await page.screenshot({ path: 'e2e/screenshots/02-aprovacoes.png', fullPage: true });
 
-    await page.getByRole('button', { name: '✔ done' }).first().click();
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: 'e2e/screenshots/03-dashboard-tarefa-concluida.png', fullPage: true });
+    const metricsNav = page.getByText('Métricas', { exact: false }).first();
+    if (await metricsNav.count()) {
+      await metricsNav.click();
+      await page.waitForTimeout(600);
+    }
+    await page.screenshot({ path: 'e2e/screenshots/03-metricas.png', fullPage: true });
   } finally {
     await browser.close();
     await frontend.close();

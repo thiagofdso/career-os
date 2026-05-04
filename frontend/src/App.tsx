@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { COLUMNS, RADAR_COLUMNS, NETWORKING_COLUMNS, INTERVIEW_COLUMNS } from './constants';
 import { KanbanColumn } from './components/Dashboard/KanbanColumn';
@@ -23,13 +23,37 @@ import { cn } from './lib/utils';
 
 export default function App() {
   const [cards, setCards] = useState(MOCK_CARDS);
+  const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
   const [activeView, setActiveView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCard, setSelectedCard] = useState<CareerCard | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredBySearch = cards.filter(c => 
+  
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API}/tasks`);
+        const tasks = await res.json();
+        const mapped = tasks.map((t: any) => ({
+          id: String(t.id),
+          type: 'project',
+          title: t.title,
+          description: t.description || '',
+          agentId: t.agent || 'orchestrator',
+          status: t.status || 'inbox',
+          priority: t.priority || 'medium',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          needsApproval: false
+        }));
+        if (Array.isArray(mapped) && mapped.length) setCards(mapped);
+      } catch {}
+    })();
+  }, []);
+const filteredBySearch = cards.filter(c => 
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
