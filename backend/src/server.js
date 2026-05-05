@@ -37,6 +37,37 @@ CREATE TABLE IF NOT EXISTS events (
 );
 `);
 
+const statements = {
+  tasks: {},
+  events: {
+    insert: db.prepare('INSERT INTO events (type, payload) VALUES (?, ?)'),
+    getById: db.prepare('SELECT * FROM events WHERE id = ?'),
+    getAll: db.prepare('SELECT * FROM events ORDER BY id DESC'),
+    delete: db.prepare('DELETE FROM events WHERE id=?')
+  }
+};
+
+tables.forEach(table => {
+  statements.tasks[table] = {
+    getAll: db.prepare(`SELECT * FROM task_${table} ORDER BY id DESC`),
+    getById: db.prepare(`SELECT * FROM task_${table} WHERE id = ?`),
+    insert: db.prepare(`
+      INSERT INTO task_${table}
+      (type, title, description, origin, agentId, status, priority, deadline, tags, score, metadata, needsApproval, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `),
+    update: db.prepare(`
+      UPDATE task_${table}
+      SET type=?, title=?, description=?, origin=?, agentId=?, status=?, priority=?, deadline=?, tags=?, score=?, metadata=?, needsApproval=?, updatedAt=datetime('now')
+      WHERE id=?
+    `),
+    delete: db.prepare(`DELETE FROM task_${table} WHERE id=?`),
+    count: db.prepare(`SELECT COUNT(*) c FROM task_${table}`),
+    countNeedsApproval: db.prepare(`SELECT COUNT(*) c FROM task_${table} WHERE needsApproval = 1`),
+    countCompleted: db.prepare(`SELECT COUNT(*) c FROM task_${table} WHERE status IN ('SENT','APPROVED','ARCHIVED')`)
+  };
+});
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -44,8 +75,10 @@ app.use(express.json());
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 tables.forEach(table => {
+  const s = statements.tasks[table];
+
   app.get(`/api/v1/task-${table}`, (_req, res) => {
-    const tasks = db.prepare(`SELECT * FROM task_${table} ORDER BY id DESC`).all();
+    const tasks = s.getAll.all();
     res.json(tasks.map(t => ({
       ...t,
       needsApproval: t.needsApproval === 1,
@@ -62,11 +95,7 @@ tables.forEach(table => {
     
     if (!title) return res.status(400).json({ error: 'title is required' });
     
-    const result = db.prepare(`
-      INSERT INTO task_${table} 
-      (type, title, description, origin, agentId, status, priority, deadline, tags, score, metadata, needsApproval, updatedAt) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
+    const result = s.insert.run(
       type, title, description, origin, agentId, status, priority, deadline,
       tags ? JSON.stringify(tags) : null,
       score,
@@ -74,7 +103,7 @@ tables.forEach(table => {
       needsApproval ? 1 : 0
     );
     
-    const t = db.prepare(`SELECT * FROM task_${table} WHERE id = ?`).get(result.lastInsertRowid);
+    const t = s.getById.get(result.lastInsertRowid);
     res.status(201).json({
       ...t,
       needsApproval: t.needsApproval === 1,
@@ -85,7 +114,7 @@ tables.forEach(table => {
 
   app.patch(`/api/v1/task-${table}/:id`, (req, res) => {
     const id = Number(req.params.id);
-    const current = db.prepare(`SELECT * FROM task_${table} WHERE id = ?`).get(id);
+    const current = s.getById.get(id);
     if (!current) return res.status(404).json({ error: 'not found' });
     
     const next = { 
@@ -96,11 +125,7 @@ tables.forEach(table => {
       ...req.body 
     };
     
-    db.prepare(`
-      UPDATE task_${table} 
-      SET type=?, title=?, description=?, origin=?, agentId=?, status=?, priority=?, deadline=?, tags=?, score=?, metadata=?, needsApproval=?, updatedAt=datetime('now') 
-      WHERE id=?
-    `).run(
+    s.update.run(
       next.type, next.title, next.description, next.origin, next.agentId, next.status, next.priority, next.deadline,
       next.tags ? JSON.stringify(next.tags) : null,
       next.score,
@@ -109,7 +134,7 @@ tables.forEach(table => {
       id
     );
     
-    const t = db.prepare(`SELECT * FROM task_${table} WHERE id = ?`).get(id);
+    const t = s.getById.get(id);
     res.json({
       ...t,
       needsApproval: t.needsApproval === 1,
@@ -119,18 +144,18 @@ tables.forEach(table => {
   });
 
   app.delete(`/api/v1/task-${table}/:id`, (req, res) => {
-    db.prepare(`DELETE FROM task_${table} WHERE id=?`).run(Number(req.params.id));
+    s.delete.run(Number(req.params.id));
     res.status(204).end();
   });
 });
 
 app.post('/api/events', (req, res) => {
   const { type = 'generic', payload = {} } = req.body || {};
-  const result = db.prepare('INSERT INTO events (type, payload) VALUES (?, ?)').run(type, JSON.stringify(payload));
-  res.status(201).json(db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid));
+  const result = statements.events.insert.run(type, JSON.stringify(payload));
+  res.status(201).json(statements.events.getById.get(result.lastInsertRowid));
 });
-app.get('/api/events', (_req, res) => res.json(db.prepare('SELECT * FROM events ORDER BY id DESC').all()));
-app.delete('/api/events/:id', (req, res) => { db.prepare('DELETE FROM events WHERE id=?').run(Number(req.params.id)); res.status(204).end(); });
+app.get('/api/events', (_req, res) => res.json(statements.events.getAll.all()));
+app.delete('/api/events/:id', (req, res) => { statements.events.delete.run(Number(req.params.id)); res.status(204).end(); });
 
 app.get('/api/metrics', (_req, res) => {
   let totalTasks = 0;
@@ -138,9 +163,10 @@ app.get('/api/metrics', (_req, res) => {
   let completed = 0;
 
   tables.forEach(table => {
-    totalTasks += db.prepare(`SELECT COUNT(*) c FROM task_${table}`).get().c;
-    pendingApprovals += db.prepare(`SELECT COUNT(*) c FROM task_${table} WHERE needsApproval = 1`).get().c;
-    completed += db.prepare(`SELECT COUNT(*) c FROM task_${table} WHERE status IN ('SENT','APPROVED','ARCHIVED')`).get().c;
+    const s = statements.tasks[table];
+    totalTasks += s.count.get().c;
+    pendingApprovals += s.countNeedsApproval.get().c;
+    completed += s.countCompleted.get().c;
   });
 
   res.json({ totalTasks, pendingApprovals, completed });
