@@ -1,0 +1,20 @@
+<<<<<<< SEARCH
+app.get('/api/metrics', (_req, res) => {
+  let totalTasks = 0;
+  let pendingApprovals = 0;
+  let completed = 0;
+
+  tables.forEach(table => {
+    const s = statements.tasks[table];
+    totalTasks += s.count.get().c;
+    pendingApprovals += s.countNeedsApproval.get().c;
+    completed += s.countCompleted.get().c;
+  });
+
+  res.json({ totalTasks, pendingApprovals, completed });
+});
+=======
+app.get('/api/metrics', (_req, res) => {
+  res.json(statements.metrics.get());
+});
+>>>>>>> REPLACE
