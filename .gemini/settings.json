@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "career-os": {
+      "command": "env BACKEND_URL=http://localhost:3001/api/v1 node\n     /root/code/career-os/mcp-server/src/server.js",
+      "args": []
+    }
+  }
+}

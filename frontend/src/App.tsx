@@ -16,7 +16,7 @@ import { ActionCenter } from './components/Dashboard/ActionCenter';
 import { Modal } from './components/ui/Modal';
 import { CardDetail } from './components/Dashboard/CardDetail';
 import { CareerCard, AgentType, CardStatus, CardType } from './types';
-import { Search, Filter, Bell, Sparkles, Plus, Menu, X } from 'lucide-react';
+import { Search, Filter, Bell, Sparkles, Plus, Menu, X, Sun, Moon } from 'lucide-react';
 import { Button } from './components/ui/Button';
 import { cn } from './lib/utils';
 
@@ -30,6 +30,24 @@ export default function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') as 'light' | 'dark' || 'light';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
 
   useEffect(() => {
     const fetchAllCards = async () => {
@@ -220,7 +238,7 @@ export default function App() {
     }
 
     if (activeView === 'metrics') {
-      return <MetricsView onViewJourney={() => setActiveView('journey')} />;
+      return <MetricsView cards={cards} onViewJourney={() => setActiveView('journey')} />;
     }
 
     if (activeView === 'journey') {
@@ -289,7 +307,7 @@ export default function App() {
         "transition-all duration-300 ease-in-out flex-shrink-0",
         isSidebarOpen ? "w-64" : "w-0 -translate-x-full overflow-hidden"
       )}>
-        <Sidebar activeView={activeView} onViewChange={setActiveView} />
+        <Sidebar activeView={activeView} onViewChange={setActiveView} cards={cards} />
       </div>
 
       <main className="flex flex-1 flex-col overflow-hidden">
@@ -323,6 +341,12 @@ export default function App() {
               ))}
             </nav>
             <div className="flex items-center gap-3 border-l border-ds-gray-200 pl-6">
+              <button 
+                onClick={toggleTheme}
+                className="p-2 text-ds-gray-700 hover:text-ds-gray-1000 transition-colors rounded-geist hover:bg-ds-gray-100"
+              >
+                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
               <button className="relative p-2 text-ds-gray-700 hover:text-ds-gray-1000 transition-colors">
                 <Bell size={20} />
                 <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-ds-red-900 ring-2 ring-ds-background-100" />

@@ -13,17 +13,43 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
+import { CareerCard, AgentType, CardStatus } from '../../types';
 
 interface MetricsViewProps {
+  cards: CareerCard[];
   onViewJourney: () => void;
 }
 
-export const MetricsView: React.FC<MetricsViewProps> = ({ onViewJourney }) => {
+export const MetricsView: React.FC<MetricsViewProps> = ({ cards, onViewJourney }) => {
+  const activeVacancies = cards.filter(c => 
+    c.agentId === AgentType.RADAR && 
+    c.status !== CardStatus.ARCHIVED && 
+    c.status !== CardStatus.REJECTED
+  ).length;
+
+  const networkingCards = cards.filter(c => c.agentId === AgentType.NETWORKING);
+  const responses = networkingCards.filter(c => c.status === CardStatus.REPLY_MESSAGE || c.status === CardStatus.SENT).length;
+  const responseRate = networkingCards.length > 0 ? Math.round((responses / networkingCards.length) * 100) : 0;
+
+  const interviews = cards.filter(c => 
+    c.agentId === AgentType.INTERVIEW && 
+    c.status === CardStatus.SCHEDULED
+  ).length;
+
+  const mcpAutomations = cards.length * 12; // Placeholder logic
+
+  const getAgentEfficiency = (agentId: AgentType) => {
+    const agentCards = cards.filter(c => c.agentId === agentId);
+    if (agentCards.length === 0) return 0;
+    const progressed = agentCards.filter(c => c.status !== CardStatus.INBOX).length;
+    return Math.round((progressed / agentCards.length) * 100);
+  };
+
   const stats = [
-    { label: 'Vagas Ativas', value: '124', change: '+12%', icon: Briefcase, color: 'text-ds-blue-700', bg: 'bg-ds-blue-700/5' },
-    { label: 'Taxa de Resposta', value: '68%', change: '+5%', icon: BarChart3, color: 'text-ds-purple', bg: 'bg-ds-purple/5' },
-    { label: 'Entrevistas', value: '12', change: '+2', icon: Target, color: 'text-ds-red-900', bg: 'bg-ds-red-900/5' },
-    { label: 'Automações MCP', value: '432', change: '+124', icon: Zap, color: 'text-ds-amber-900', bg: 'bg-ds-amber-700/5' },
+    { label: 'Vagas Ativas', value: activeVacancies.toString(), change: '+12%', icon: Briefcase, color: 'text-ds-blue-700', bg: 'bg-ds-blue-700/5' },
+    { label: 'Taxa de Resposta', value: `${responseRate}%`, change: '+5%', icon: BarChart3, color: 'text-ds-purple', bg: 'bg-ds-purple/5' },
+    { label: 'Entrevistas', value: interviews.toString(), change: '+2', icon: Target, color: 'text-ds-red-900', bg: 'bg-ds-red-900/5' },
+    { label: 'Automações MCP', value: mcpAutomations.toString(), change: '+124', icon: Zap, color: 'text-ds-amber-900', bg: 'bg-ds-amber-700/5' },
   ];
 
   return (
@@ -70,10 +96,10 @@ export const MetricsView: React.FC<MetricsViewProps> = ({ onViewJourney }) => {
              <h3 className="text-[10px] font-bold uppercase tracking-widest text-ds-gray-700 mb-8">Eficiência por Agente</h3>
              <div className="space-y-8">
                {[
-                 { name: 'Radar de Oportunidades', color: 'bg-agent-radar', value: 85 },
-                 { name: 'Conteúdo e Autoridade', color: 'bg-agent-content', value: 92 },
-                 { name: 'Entrevistas e Conversão', color: 'bg-agent-interview', value: 74 },
-                 { name: 'Portfólio e Projetos', color: 'bg-agent-portfolio', value: 65 },
+                 { name: 'Radar de Oportunidades', color: 'bg-agent-radar', value: getAgentEfficiency(AgentType.RADAR) },
+                 { name: 'Conteúdo e Autoridade', color: 'bg-agent-content', value: getAgentEfficiency(AgentType.CONTENT) },
+                 { name: 'Entrevistas e Conversão', color: 'bg-agent-interview', value: getAgentEfficiency(AgentType.INTERVIEW) },
+                 { name: 'Portfólio e Projetos', color: 'bg-agent-portfolio', value: getAgentEfficiency(AgentType.PORTFOLIO) },
                ].map(agent => (
                  <div key={agent.name} className="flex flex-col gap-3">
                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
