@@ -15,7 +15,7 @@ import {
   parseISO
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CareerCard, AgentType, Priority } from '../../types';
+import { CareerCard, AgentType, Priority, CardStatus } from '../../types';
 import { AGENTS } from '../../constants';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
@@ -41,7 +41,12 @@ export const InterviewsView: React.FC<InterviewsViewProps> = ({ cards, onCardCli
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const interviewCards = cards.filter(c => c.deadline);
+  const interviewCards = cards.filter(c => 
+    c.agentId === AgentType.INTERVIEW && 
+    c.deadline && 
+    c.status !== CardStatus.ARCHIVED && 
+    c.status !== CardStatus.REJECTED
+  );
 
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));

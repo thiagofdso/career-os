@@ -1,6 +1,6 @@
 export const variants = {
-  primary: 'bg-ds-gray-1000 text-ds-background-100 hover:bg-ds-gray-1000/90 ds-shadow-border',
-  secondary: 'bg-ds-blue-700 text-ds-background-100 hover:bg-ds-blue-800 ds-shadow-border',
+  primary: 'bg-ds-gray-1000 text-ds-contrast-fg hover:bg-ds-gray-1000/90 ds-shadow-border',
+  secondary: 'bg-ds-blue-700 text-ds-contrast-fg hover:bg-ds-blue-800 ds-shadow-border',
   approval: 'bg-ds-amber-700 text-ds-gray-1000 hover:bg-ds-amber-700/90 ds-shadow-border',
   ghost: 'bg-transparent text-ds-blue-700 hover:bg-ds-blue-700/5',
   outline: 'bg-ds-background-100 border border-ds-gray-200 text-ds-gray-1000 hover:border-ds-gray-1000 hover:bg-ds-background-200 ds-shadow-border',

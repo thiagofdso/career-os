@@ -13,17 +13,31 @@ import {
   Users
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { CareerCard, CardStatus } from '../types';
 
 interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
+  cards: CareerCard[];
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, cards }) => {
+  const approvalCount = cards.filter(c => c.needsApproval).length;
+  
+  // Dynamic progress calculation (e.g., cards moved out of INBOX / total cards)
+  const totalCards = cards.length;
+  const completedCards = cards.filter(c => 
+    c.status !== CardStatus.INBOX && 
+    c.status !== CardStatus.WAITING_APPROVAL &&
+    c.status !== CardStatus.REJECTED &&
+    c.status !== CardStatus.ARCHIVED
+  ).length;
+  const progressPercent = totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0;
+
   const sections = [
     { title: 'Principal', items: [
       { name: 'Dashboard', icon: LayoutDashboard, id: 'dashboard' },
-      { name: 'Fila de Aprovação', icon: Mail, id: 'approvals', count: 4 },
+      { name: 'Fila de Aprovação', icon: Mail, id: 'approvals', count: approvalCount },
     ]},
     { title: 'Agentes', items: [
       { name: 'Radar de Oportunidades', icon: Briefcase, id: 'radar', color: 'text-agent-radar' },
@@ -56,13 +70,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) =>
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-bold text-ds-gray-700 uppercase tracking-wider">Avanço Semanal</span>
-            <span className="text-xs font-bold text-ds-green-900">+12%</span>
+            <span className="text-xs font-bold text-ds-green-900">+{progressPercent}%</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-ds-gray-200 overflow-hidden">
-             <div className="h-full w-2/3 bg-ds-gray-1000 rounded-full" />
+             <div className="h-full bg-ds-gray-1000 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
           </div>
           <p className="text-[10px] text-ds-gray-900">
-            <span className="font-bold text-ds-gray-1000">4 de 6</span> objetivos semanais concluídos.
+            <span className="font-bold text-ds-gray-1000">{completedCards} de {totalCards}</span> objetivos semanais concluídos.
           </p>
         </div>
       </div>
