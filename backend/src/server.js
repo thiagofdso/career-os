@@ -39,6 +39,14 @@ tables.forEach(table => {
 });
 
 db.exec(`
+CREATE TABLE IF NOT EXISTS metrics_cache (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  totalTasks INTEGER NOT NULL DEFAULT 0,
+  pendingApprovals INTEGER NOT NULL DEFAULT 0,
+  completed INTEGER NOT NULL DEFAULT 0
+);
+INSERT OR IGNORE INTO metrics_cache (id, totalTasks, pendingApprovals, completed) VALUES (1, 0, 0, 0);
+
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT NOT NULL,
@@ -47,8 +55,52 @@ CREATE TABLE IF NOT EXISTS events (
 );
 `);
 
+let initTotalTasks = 0;
+let initPendingApprovals = 0;
+let initCompleted = 0;
+
+tables.forEach(table => {
+  initTotalTasks += db.prepare(`SELECT COUNT(*) c FROM task_${table}`).get().c;
+  initPendingApprovals += db.prepare(`SELECT COUNT(*) c FROM task_${table} WHERE needsApproval = 1`).get().c;
+  initCompleted += db.prepare(`SELECT COUNT(*) c FROM task_${table} WHERE status IN ('SENT','APPROVED','ARCHIVED')`).get().c;
+
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS task_${table}_insert AFTER INSERT ON task_${table}
+    BEGIN
+      UPDATE metrics_cache SET
+        totalTasks = totalTasks + 1,
+        pendingApprovals = pendingApprovals + NEW.needsApproval,
+        completed = completed + CASE WHEN NEW.status IN ('SENT','APPROVED','ARCHIVED') THEN 1 ELSE 0 END
+      WHERE id = 1;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS task_${table}_update AFTER UPDATE ON task_${table}
+    BEGIN
+      UPDATE metrics_cache SET
+        pendingApprovals = pendingApprovals - OLD.needsApproval + NEW.needsApproval,
+        completed = completed
+          - CASE WHEN OLD.status IN ('SENT','APPROVED','ARCHIVED') THEN 1 ELSE 0 END
+          + CASE WHEN NEW.status IN ('SENT','APPROVED','ARCHIVED') THEN 1 ELSE 0 END
+      WHERE id = 1;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS task_${table}_delete AFTER DELETE ON task_${table}
+    BEGIN
+      UPDATE metrics_cache SET
+        totalTasks = totalTasks - 1,
+        pendingApprovals = pendingApprovals - OLD.needsApproval,
+        completed = completed - CASE WHEN OLD.status IN ('SENT','APPROVED','ARCHIVED') THEN 1 ELSE 0 END
+      WHERE id = 1;
+    END;
+  `);
+});
+
+db.prepare(`UPDATE metrics_cache SET totalTasks = ?, pendingApprovals = ?, completed = ? WHERE id = 1`).run(initTotalTasks, initPendingApprovals, initCompleted);
+
+
 const statements = {
   tasks: {},
+  metrics: db.prepare('SELECT totalTasks, pendingApprovals, completed FROM metrics_cache WHERE id = 1'),
   events: {
     insert: db.prepare('INSERT INTO events (type, payload) VALUES (?, ?)'),
     getById: db.prepare('SELECT * FROM events WHERE id = ?'),
@@ -150,18 +202,7 @@ app.get('/api/events', (_req, res) => res.json(statements.events.getAll.all()));
 app.delete('/api/events/:id', (req, res) => { statements.events.delete.run(Number(req.params.id)); res.status(204).end(); });
 
 app.get('/api/metrics', (_req, res) => {
-  let totalTasks = 0;
-  let pendingApprovals = 0;
-  let completed = 0;
-
-  tables.forEach(table => {
-    const s = statements.tasks[table];
-    totalTasks += s.count.get().c;
-    pendingApprovals += s.countNeedsApproval.get().c;
-    completed += s.countCompleted.get().c;
-  });
-
-  res.json({ totalTasks, pendingApprovals, completed });
+  res.json(statements.metrics.get());
 });
 
 const port = Number(process.env.PORT || 3001);
