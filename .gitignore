@@ -7,3 +7,4 @@ coverage/
 frontend/dist/
 
 e2e/screenshots/*.png
+backend/e2e.db
