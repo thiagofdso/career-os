@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 describe('Task API PATCH', () => {
   let serverProcess;
-  const port = 3005;
+  const port = process.env.TEST_PORT || 3005;
 
   before(async () => {
     return new Promise((resolve, reject) => {
