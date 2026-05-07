@@ -6,15 +6,8 @@ const db = new Database(process.env.SQLITE_PATH || 'career_os.db');
 
 const tables = ['vaga', 'networking', 'entrevista', 'conteudo', 'projeto', 'orquestrador'];
 
-const parseTask = (t) => {
-  if (!t) return t;
-  return {
-    ...t,
-    needsApproval: t.needsApproval === 1,
-    tags: t.tags ? JSON.parse(t.tags) : undefined,
-    metadata: t.metadata ? JSON.parse(t.metadata) : undefined
-  };
-};
+import { parseTask } from "./utils.js";
+
 
 tables.forEach(table => {
   db.exec(`
