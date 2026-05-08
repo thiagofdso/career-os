@@ -31,7 +31,7 @@ interface KanbanCardProps {
   onClick?: () => void;
 }
 
-export const KanbanCard: React.FC<KanbanCardProps> = ({ card, onClick }) => {
+export const KanbanCard = React.memo<KanbanCardProps>(({ card, onClick }) => {
   const agent = AGENTS[card.agentId];
   const Icon = AgentIcons[card.agentId];
 
@@ -132,4 +132,9 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ card, onClick }) => {
       </div>
     </motion.div>
   );
-};
+});
+
+// ⚡ Bolt Optimization: KanbanCard is memoized to prevent unnecessary re-renders
+// when the parent App or Column re-renders (e.g. during search or tab switching),
+// significantly improving performance on boards with many cards.
+KanbanCard.displayName = "KanbanCard";
