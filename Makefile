@@ -13,7 +13,7 @@ build:
 	npm --prefix frontend run build
 
 test:
-	npm run test:e2e
+	TEST_PORT=$${TEST_PORT:-3005} npm run test:e2e
 
 run:
 	@trap 'kill 0' INT TERM EXIT; \
@@ -23,10 +23,10 @@ run:
 	wait
 
 run-backend:
-	cd backend && npm run dev
+	cd backend && npm run dev & wait
 
 run-frontend:
-	cd frontend && npm run dev -- --host --port 3000
+	cd frontend && npm run dev -- --host --port 3000 & wait
 
 run-mcp:
-	cd mcp-server && npm run dev
+	cd mcp-server && npm run dev & wait
