@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   LayoutDashboard, 
   Terminal, 
@@ -22,17 +22,17 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, cards }) => {
-  const approvalCount = cards.filter(c => c.needsApproval).length;
+  const approvalCount = useMemo(() => cards.filter(c => c.needsApproval).length, [cards]);
   
   // Dynamic progress calculation (e.g., cards moved out of INBOX / total cards)
   const totalCards = cards.length;
-  const completedCards = cards.filter(c => 
+  const completedCards = useMemo(() => cards.filter(c =>
     c.status !== CardStatus.INBOX && 
     c.status !== CardStatus.WAITING_APPROVAL &&
     c.status !== CardStatus.REJECTED &&
     c.status !== CardStatus.ARCHIVED
-  ).length;
-  const progressPercent = totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0;
+  ).length, [cards]);
+  const progressPercent = useMemo(() => totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0, [totalCards, completedCards]);
 
   const sections = [
     { title: 'Principal', items: [
