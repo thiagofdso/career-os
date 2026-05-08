@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 describe('Task API PATCH', () => {
   let serverProcess;
   const port = process.env.TEST_PORT || 3005;
+  let timeoutId;
 
   before(async () => {
     return new Promise((resolve, reject) => {
@@ -19,6 +20,7 @@ describe('Task API PATCH', () => {
 
       serverProcess.stdout.on('data', (data) => {
         if (data.toString().includes(`backend on :${port}`)) {
+          clearTimeout(timeoutId);
           resolve();
         }
       });
@@ -27,10 +29,13 @@ describe('Task API PATCH', () => {
         console.error(data.toString());
       });
 
-      serverProcess.on('error', reject);
+      serverProcess.on('error', (err) => {
+        clearTimeout(timeoutId);
+        reject(err);
+      });
 
       // Safety timeout
-      setTimeout(() => reject(new Error('Server start timeout')), 5000);
+      timeoutId = setTimeout(() => reject(new Error('Server start timeout')), 5000);
     });
   });
 
