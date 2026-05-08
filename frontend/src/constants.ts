@@ -85,3 +85,5 @@ export const PRIORITY_COLORS: Record<Priority, string> = {
   [Priority.HIGH]: 'bg-orange-100 text-orange-600',
   [Priority.CRITICAL]: 'bg-red-100 text-red-600'
 };
+
+export const RADAR_COMPANIES = ['Stripe', 'Vercel', 'Linear', 'OpenAI'];

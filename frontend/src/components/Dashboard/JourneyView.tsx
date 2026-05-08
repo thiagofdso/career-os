@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { cn } from '../../lib/utils';
+import { RADAR_COMPANIES } from '../../constants';
 
 export const JourneyView: React.FC = () => {
   const milestones = [
@@ -121,7 +122,7 @@ export const JourneyView: React.FC = () => {
           <div className="bg-ds-background-100 p-5 rounded-geist border border-ds-gray-200 ds-shadow-border">
             <h3 className="text-xs font-bold text-ds-gray-1000 uppercase tracking-widest mb-4">Empresas no Radar</h3>
             <div className="space-y-3">
-              {['Stripe', 'Vercel', 'Linear', 'OpenAI'].map((company) => (
+              {RADAR_COMPANIES.map((company) => (
                 <div key={company} className="flex items-center justify-between p-2 rounded-md hover:bg-ds-background-200 border border-transparent hover:border-ds-gray-200 transition-all cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="h-6 w-6 rounded bg-ds-gray-100 flex items-center justify-center text-[10px] font-bold">
