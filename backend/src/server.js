@@ -4,10 +4,9 @@ import Database from 'better-sqlite3';
 
 const db = new Database(process.env.SQLITE_PATH || 'career_os.db');
 
-const tables = ['vaga', 'networking', 'entrevista', 'conteudo', 'projeto', 'orquestrador'];
-
 import { parseTask } from "./utils.js";
 
+const tables = ['vaga', 'networking', 'entrevista', 'conteudo', 'projeto', 'orquestrador'];
 
 tables.forEach(table => {
   db.exec(`
@@ -191,8 +190,15 @@ app.post('/api/events', (req, res) => {
   const result = statements.events.insert.run(type, JSON.stringify(payload));
   res.status(201).json(statements.events.getById.get(result.lastInsertRowid));
 });
-app.get('/api/events', (_req, res) => res.json(statements.events.getAll.all()));
-app.delete('/api/events/:id', (req, res) => { statements.events.delete.run(Number(req.params.id)); res.status(204).end(); });
+
+app.get('/api/events', (_req, res) => {
+  res.json(statements.events.getAll.all());
+});
+
+app.delete('/api/events/:id', (req, res) => {
+  statements.events.delete.run(Number(req.params.id));
+  res.status(204).end();
+});
 
 app.get('/api/metrics', (_req, res) => {
   res.json(statements.metrics.get());
